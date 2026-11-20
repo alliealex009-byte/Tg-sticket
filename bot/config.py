@@ -81,6 +81,8 @@ class Settings:
     category_pack_owner_id: int = 0
     owner_id: int = 0
     auto_pack: bool = True
+    quiet_mode: bool = True
+    quiet_find_count: int = 4
     channel_id: str = ""
     data_dir: str = "data"
     log_dir: str = "logs"
@@ -138,6 +140,8 @@ class Settings:
             category_pack_owner_id=owner,
             owner_id=owner_id,
             auto_pack=_bool(env, "AUTO_PACK", True),
+            quiet_mode=_bool(env, "QUIET_MODE", True),
+            quiet_find_count=_int(env, "QUIET_FIND_COUNT", 4, 1, 10),
             channel_id=(env.get("CHANNEL_ID") or "").strip(),
             data_dir=(env.get("DATA_DIR") or "data").strip(),
             log_dir=(env.get("LOG_DIR") or "logs").strip(),

@@ -85,6 +85,10 @@ def sticker_actions(sticker_id: str, category: str, queued: bool = False, admin:
     return M(inline_keyboard=rows)
 
 
+def pack_only(pack_url: str) -> M:
+    return M(inline_keyboard=[[B(text="➕ Add pack", url=pack_url)]])
+
+
 def photo_options(opts: dict) -> M:
     def tick(flag: bool, label: str) -> str:
         return f"✅ {label}" if flag else label

@@ -244,6 +244,10 @@ class Database:
         return await self.db["sticker_packs"].find({"owner_id": uid, "kind": "user", "gone": {"$ne": True}}) \
             .sort("created_at", 1).to_list(200)
 
+    async def cloned_packs(self, source: str) -> list:
+        return await self.db["sticker_packs"].find({"kind": "clone", "source": source, "gone": {"$ne": True}}) \
+            .sort("part", 1).to_list(50)
+
     async def get_pack(self, name: str) -> dict | None:
         return await self.db["sticker_packs"].find_one({"name": name})
 

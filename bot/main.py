@@ -18,7 +18,7 @@ from aiogram.types.error_event import ErrorEvent
 from .config import ConfigError, Settings
 from .context import AppContext
 from .database import Database
-from .handlers import admin, ai_sticker, packs, photo, profile, search, start, text_sticker
+from .handlers import admin, ai_sticker, clone, packs, photo, profile, search, start, text_sticker
 from .middleware import GuardMiddleware
 from .services.ai_generator import AIGenerator
 from .services.background_removal import BackgroundRemover
@@ -36,7 +36,7 @@ COMMANDS = [
     ("sticker", "AI sticker: /sticker pink cat"), ("text", "Text sticker: /text Good Morning"),
     ("mypacks", "My sticker packs"), ("createpack", "Preview & publish queued stickers"),
     ("addpack", "Queue my latest sticker"), ("profile", "My profile & limits"),
-    ("settings", "Sticker settings"), ("cancel", "Cancel current action"), ("help", "Help"),
+    ("settings", "Sticker settings"), ("clone", "Admin: clone a sticker pack"), ("cancel", "Cancel current action"), ("help", "Help"),
 ]
 
 
@@ -63,7 +63,7 @@ def build_dispatcher(ctx: AppContext) -> Dispatcher:
     dp = Dispatcher(storage=MemoryStorage(), ctx=ctx)
     dp.update.outer_middleware(GuardMiddleware(ctx))
     # Order matters: admin first, plain-text fallback last.
-    for r in (admin.router, start.router, search.router, ai_sticker.router, text_sticker.router,
+    for r in (admin.router, clone.router, start.router, search.router, ai_sticker.router, text_sticker.router,
               photo.router, packs.router, profile.router, start.fallback_router):
         dp.include_router(r)
 
