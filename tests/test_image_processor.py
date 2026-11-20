@@ -148,3 +148,14 @@ def test_available_fonts_never_crashes(tmp_path):
     fonts = ip.available_fonts([tmp_path])
     assert isinstance(fonts, dict)
     assert ip.load_font("nonexistent", 40, fonts) is not None
+
+
+def test_illustration_vs_photo_heuristic():
+    import random
+    flat = Image.new("RGB", (200, 300), (250, 230, 200))
+    from PIL import ImageDraw
+    ImageDraw.Draw(flat).ellipse((40, 60, 160, 200), fill=(230, 60, 60))
+    assert ip.looks_like_illustration(flat.convert("RGBA"))
+    random.seed(1)
+    noisy = Image.effect_noise((200, 300), 60).convert("RGB")
+    assert not ip.looks_like_illustration(noisy.convert("RGBA"))

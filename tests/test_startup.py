@@ -14,7 +14,7 @@ def test_dispatcher_builds_with_all_routers(settings):
     dp = build_dispatcher(ctx)
     assert dp.workflow_data["ctx"] is ctx
     names = {r.name for r in dp.sub_routers}
-    assert {"admin", "start", "search", "ai_sticker", "photo", "packs", "profile", "text_sticker", "fallback"} <= names
+    assert {"admin", "start", "search", "ai_sticker", "photo", "packs", "profile", "text_sticker", "fallback", "clone"} <= names
     assert {"message", "callback_query"} <= set(dp.resolve_used_update_types())
 
 

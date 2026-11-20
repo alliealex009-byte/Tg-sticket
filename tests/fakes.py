@@ -163,15 +163,24 @@ class FakeBot:
 
     def __init__(self):
         self.created, self.added, self.fail = [], [], []
+        self.set_size = 5
 
     def _maybe_fail(self):
         if self.fail:
             raise self.fail.pop(0)
 
-    async def create_new_sticker_set(self, user_id, name, title, stickers):
+    async def create_new_sticker_set(self, user_id, name, title, stickers, sticker_type=None):
         self._maybe_fail()
         self.created.append(SimpleNamespace(user_id=user_id, name=name, title=title, stickers=stickers))
         return True
+
+    async def get_sticker_set(self, name):
+        from types import SimpleNamespace as NS
+        if name == "missing":
+            raise RuntimeError("STICKERSET_INVALID")
+        items = [NS(file_id=f"fid{i}", emoji="😀", is_animated=(i == 0 and name == "anim"), is_video=False)
+                 for i in range(self.set_size)]
+        return NS(name=name, title="Food", sticker_type="regular", stickers=items)
 
     async def add_sticker_to_set(self, user_id, name, sticker):
         self._maybe_fail()

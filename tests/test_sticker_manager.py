@@ -207,3 +207,30 @@ def test_auto_publish_skips_duplicates_and_backfills_channel(env):
     assert again.duplicate and len(bot.created) == 1 and not bot.posts
     assert run(mgr.post_unposted(bot, "-1001234")) == (1, 0)
     assert bot.posts[0][0] == -1001234 and run(mgr.post_unposted(bot, "-1001234")) == (0, 0)
+
+
+def test_clone_pack_title_format_owner_and_formats(env):
+    _, db, mgr = setup(env, MAX_PACK_STICKERS="3")
+    bot = ChannelBot()
+    bot.set_size = 5
+    res = run(mgr.clone_set(bot, "anim", 111, "@chan"))
+    assert res.count == 5 and not res.already and [p.added for p in res.packs] == [3, 2]
+    assert [c.title for c in bot.created] == ["Food : @Advik_prakashh", "Food Vibes : @Advik_prakashh"]
+    assert all(c.user_id == 111 for c in bot.created)
+    assert bot.created[0].stickers[0].sticker == "fid0" and bot.created[0].stickers[0].format == "animated"
+    assert len(bot.added) == 3 and len(bot.posts) == 2
+    again = run(mgr.clone_set(bot, "anim", 111))
+    assert again.already and len(bot.created) == 2          # never cloned twice
+
+
+def test_clone_title_is_capped():
+    from bot.services.category_detector import clone_title
+    assert clone_title("food", "@advik_prakashh") == "food : @advik_prakashh"
+    assert len(clone_title("x" * 200, "@Advik_prakashh", 2)) <= 64
+
+
+def test_parse_pack_name():
+    pytest.importorskip("aiogram.filters")
+    from bot.handlers.clone import parse_pack_name
+    assert parse_pack_name("https://t.me/addstickers/Cute_Cats_by_bot") == "Cute_Cats_by_bot"
+    assert parse_pack_name("Cute_Cats") == "Cute_Cats" and parse_pack_name("not a name!") is None
