@@ -34,6 +34,11 @@ class AppContext:
     restart_event: asyncio.Event = field(default_factory=asyncio.Event)
     pending_broadcasts: dict = field(default_factory=dict)
 
+    @property
+    def owner_id(self) -> int:
+        """Account that owns all auto-published packs (runtime override via /owner, else OWNER_ID)."""
+        return int(self.runtime.get("owner_id") or self.settings.owner_id or 0)
+
     def is_admin(self, user_id: int) -> bool:
         return user_id in self.settings.admin_ids
 

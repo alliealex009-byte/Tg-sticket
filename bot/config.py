@@ -82,6 +82,8 @@ class Settings:
     owner_id: int = 0
     auto_pack: bool = True
     quiet_mode: bool = True
+    ai_providers: tuple = ("openai", "pollinations")
+    local_ai_model: str = "stabilityai/sd-turbo"
     quiet_find_count: int = 4
     channel_id: str = ""
     data_dir: str = "data"
@@ -141,6 +143,9 @@ class Settings:
             owner_id=owner_id,
             auto_pack=_bool(env, "AUTO_PACK", True),
             quiet_mode=_bool(env, "QUIET_MODE", True),
+            ai_providers=tuple(p.strip().lower() for p in (env.get("AI_PROVIDERS") or "openai,pollinations").split(",")
+                               if p.strip().lower() in ("openai", "pollinations", "local")) or ("pollinations",),
+            local_ai_model=(env.get("LOCAL_AI_MODEL") or "stabilityai/sd-turbo").strip(),
             quiet_find_count=_int(env, "QUIET_FIND_COUNT", 4, 1, 10),
             channel_id=(env.get("CHANNEL_ID") or "").strip(),
             data_dir=(env.get("DATA_DIR") or "data").strip(),

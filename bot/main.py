@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import shutil
 import sys
 import time
@@ -36,7 +37,7 @@ COMMANDS = [
     ("sticker", "AI sticker: /sticker pink cat"), ("text", "Text sticker: /text Good Morning"),
     ("mypacks", "My sticker packs"), ("createpack", "Preview & publish queued stickers"),
     ("addpack", "Queue my latest sticker"), ("profile", "My profile & limits"),
-    ("settings", "Sticker settings"), ("clone", "Admin: clone a sticker pack"), ("cancel", "Cancel current action"), ("help", "Help"),
+    ("settings", "Sticker settings"), ("clone", "Admin: clone a sticker pack"), ("id", "Show my Telegram ID"), ("cancel", "Cancel current action"), ("help", "Help"),
 ]
 
 
@@ -52,7 +53,8 @@ def build_context(settings: Settings) -> AppContext:
         search=ImageSearchService(settings, downloader),
         remover=remover,
         ai=AIGenerator(settings.openai_api_key, settings.image_model, settings.image_quality,
-                       settings.vision_model),
+                       settings.vision_model, providers=list(settings.ai_providers), downloader=downloader,
+                       local_model=settings.local_ai_model),
         builder=StickerBuilder(remover, settings.max_image_bytes),
         gate=TaskGate(settings.max_concurrent_tasks),
     )
@@ -122,6 +124,8 @@ async def run() -> int:
     await ctx.db.connect()
     ctx.runtime["maintenance"] = bool(await ctx.db.get_setting("maintenance", False))
     ctx.runtime["limits"] = dict(await ctx.db.get_setting("limits", {}) or {})
+    ctx.runtime["owner_id"] = int(await ctx.db.get_setting("owner_id", 0) or 0)
+    os.environ.setdefault("HF_HOME", str(Path(settings.data_dir) / "models" / "hf"))
 
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     me = await bot.get_me()
@@ -129,6 +133,15 @@ async def run() -> int:
     ctx.stickers = StickerManager(settings, ctx.db, ctx.bot_username)
     if not ctx.bot_username:
         log.error("Could not determine the bot username; sticker packs cannot be created.")
+    if ctx.owner_id:
+        try:
+            await bot.get_chat(ctx.owner_id)
+            log.info("Pack owner account: %s", ctx.owner_id)
+        except Exception as exc:  # noqa: BLE001
+            log.error("OWNER_ID %s is not reachable (%s). Put YOUR numeric Telegram ID (send /id to the bot) in "
+                      ".env as OWNER_ID and ADMIN_IDS, and press Start in the bot with that account.", ctx.owner_id, exc)
+    else:
+        log.error("No OWNER_ID/ADMIN_IDS set: automatic packs and /clone are disabled. Send /id to the bot.")
     await bot.set_my_commands([BotCommand(command=c, description=d) for c, d in COMMANDS])
 
     dp = build_dispatcher(ctx)
