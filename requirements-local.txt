@@ -1,5 +1,0 @@
-# Optional: free CPU image generation on the server (SD-Turbo). Needs ~6 GB RAM, ~2 GB disk, 20-90 s per image.
-torch>=2.2
-diffusers>=0.30
-transformers>=4.40
-accelerate>=0.30
