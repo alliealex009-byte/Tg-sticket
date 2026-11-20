@@ -15,6 +15,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+ARG INSTALL_LOCAL_AI=0
+COPY requirements-local.txt .
+RUN if [ "$INSTALL_LOCAL_AI" = "1" ]; then pip install -r requirements-local.txt --extra-index-url https://download.pytorch.org/whl/cpu; fi
+
 RUN useradd --create-home --uid 10001 stickerbot
 COPY --chown=stickerbot:stickerbot . .
 RUN mkdir -p /app/data /app/logs && chown -R stickerbot:stickerbot /app/data /app/logs

@@ -149,11 +149,24 @@ packs owned by `OWNER_ID` titled `<original title> : @Advik_prakashh` (e.g. `Foo
 formats, splits into similarly named packs at 50 stickers, posts one sticker to the channel and never clones the same pack twice.
 Only clone packs you have the right to reuse.
 
+### If packs/clone don't work: the owner ID
+
+Telegram says `user not found` when `OWNER_ID` isn't the numeric ID of an account that pressed **Start** in the bot, and `/clone` is silent
+when your ID isn't in `ADMIN_IDS`. Send `/id` to the bot, then put that number in `.env` as `ADMIN_IDS=` **and** `OWNER_ID=`, and
+`docker compose up -d`. Or, as an admin, send `/owner` to make your own account the pack owner without editing `.env`. The startup log
+prints `Pack owner account: …` or an explicit error.
+
+### Image generation without OpenAI
+
+`AI_PROVIDERS=openai,pollinations` (default): if the OpenAI key is missing/rejected, the free hosted Pollinations generator is used and the
+bot cuts the subject out automatically. For generation on **your own server CPU** set `AI_PROVIDERS=pollinations,local`, `INSTALL_LOCAL_AI=1` in
+`.env` and run `sudo docker compose up -d --build` (adds PyTorch + diffusers, SD-Turbo; needs ~6 GB RAM, 20–90 s per image, downloads ~2 GB once).
+
 ### Admin commands (IDs from `ADMIN_IDS`)
 
 `/admin` dashboard · `/stats` · `/users [id]` · `/broadcast <html text>` (preview + confirm, rate-limited) ·
 `/ban <id> [reason]` · `/unban <id>` · `/setlimit <generations|searches|stickers|packs> <n>` ·
-`/premium grant <id> [days]` · `/premium revoke <id>` · `/premium status <id>` · `/maintenance on|off` · `/postpacks` · `/restart`.
+`/premium grant <id> [days]` · `/premium revoke <id>` · `/premium status <id>` · `/maintenance on|off` · `/postpacks` · `/owner` · `/restart`. Everyone: `/id`.
 Non-admins get no response from these commands. Admins have no usage limits and can tap
 **🌐 Add to category pack** to put a sticker into the shared bot-owned pack for its category.
 
