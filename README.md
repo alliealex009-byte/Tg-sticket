@@ -138,6 +138,17 @@ The first sticker of every new pack is posted to your public channel (`CHANNEL_I
 pack that wasn’t announced yet. Requirements: press **Start** in the bot with the owner account, and make the bot an **admin of the channel**.
 Set `AUTO_PACK=false` to go back to the manual queue → preview → publish flow.
 
+### Quiet mode (default) and cloning
+
+`QUIET_MODE=true`: send an image (or many at once) → you get the sticker back, already added to the owner pack, with just an
+**➕ Add pack** button. No menus, previews or extra notes. Flat cartoon artwork automatically uses the `isnet-anime` cut-out model
+(downloaded on first use); photos use `REMBG_MODEL`. `/find` turns the top results straight into stickers.
+
+**Clone a pack (admins only):** send any sticker from a pack, or `/clone https://t.me/addstickers/PackName`. The bot copies it into
+packs owned by `OWNER_ID` titled `<original title> : @Advik_prakashh` (e.g. `Food : @Advik_prakashh`), keeps static/animated/video
+formats, splits into similarly named packs at 50 stickers, posts one sticker to the channel and never clones the same pack twice.
+Only clone packs you have the right to reuse.
+
 ### Admin commands (IDs from `ADMIN_IDS`)
 
 `/admin` dashboard · `/stats` · `/users [id]` · `/broadcast <html text>` (preview + confirm, rate-limited) ·
