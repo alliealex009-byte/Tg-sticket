@@ -104,10 +104,12 @@ async def deliver_sticker(ctx: AppContext, user: dict, message: Message, webp: b
                          + (" ✨ (new pack!)" if res.created else ""))
         except Exception:  # noqa: BLE001 - the sticker itself must still be delivered
             log.exception("Automatic pack publishing failed (has the owner pressed Start in the bot?)")
+    quiet = ctx.settings.quiet_mode and bool(pack_url)
     await message.answer_sticker(
         BufferedInputFile(webp, filename="sticker.webp"),
-        reply_markup=kb.sticker_actions(doc["_id"], category, queued, ctx.is_admin(uid), pack_url))
-    if auto_note:
+        reply_markup=(kb.pack_only(pack_url) if quiet
+                      else kb.sticker_actions(doc["_id"], category, queued, ctx.is_admin(uid), pack_url)))
+    if auto_note and not quiet:
         await message.answer(auto_note)
     await ctx.db.inc_user_stat(uid, "stickers")
     await ctx.db.inc_stat("stickers_generated")
@@ -136,7 +138,8 @@ async def make_and_deliver(ctx: AppContext, user: dict, message: Message, data: 
     """Full pipeline: quota -> convert -> send sticker (-> optional queue). Returns the sticker doc."""
     if spend_kind and not await spend(ctx, user, spend_kind, message):
         return None
-    status = await message.answer("🎀 Creating your sticker…")
+    quiet = ctx.settings.quiet_mode
+    status = None if quiet else await message.answer("🎀 Creating your sticker…")
     try:
         async with ctx.gate.slot(priority(user)):
             result = await ctx.builder.build(data, opts)
@@ -149,9 +152,9 @@ async def make_and_deliver(ctx: AppContext, user: dict, message: Message, data: 
             notes.append("I couldn't remove the background from that image, so I kept it as is.")
         if not result.has_alpha and opts.bg_mode in ("auto", "transparent"):
             notes.append("This sticker has a solid background (no transparency).")
-        if notes:
+        if notes and not quiet:
             await message.answer("ℹ️ " + " ".join(notes))
-        if queue:
+        if queue and not quiet:
             await queue_message(ctx, user, message, doc["_id"])
         return doc
     except Exception as exc:  # noqa: BLE001
@@ -162,5 +165,6 @@ async def make_and_deliver(ctx: AppContext, user: dict, message: Message, data: 
         await message.answer("❌ " + describe_error(exc))
         return None
     finally:
-        with suppress(TelegramBadRequest):
-            await status.delete()
+        if status is not None:
+            with suppress(TelegramBadRequest):
+                await status.delete()

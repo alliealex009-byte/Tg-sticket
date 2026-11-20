@@ -64,8 +64,18 @@ async def got_photo(message: Message, ctx: AppContext, user: dict, state: FSMCon
     if item.file_size and item.file_size > ctx.settings.max_image_bytes:
         await message.answer(f"Please send an image smaller than {ctx.settings.max_image_size_mb} MB 💗")
         return
-    opts = _default_opts(user)
     hint = clean_query(message.caption or "", 120)
+    if ctx.settings.quiet_mode:   # image in -> sticker out, nothing else
+        try:
+            raw = await _download(message.bot, item.file_id, ctx.settings.max_image_bytes)
+        except Exception as exc:  # noqa: BLE001
+            await message.answer("❌ " + (str(exc) if isinstance(exc, ValidationError) else "Could not read that image."))
+            return
+        await ctx.db.inc_user_stat(user["_id"], "downloads")
+        await ctx.db.inc_stat("images_downloaded")
+        await make_and_deliver(ctx, user, message, raw, user_options(user), hints=(hint,), source={"type": "photo"})
+        return
+    opts = _default_opts(user)
     await state.clear()
     await state.set_state(PhotoState.menu)
     await state.update_data(file_id=item.file_id, opts=opts, hint=hint, last_sticker=None, last_sig="")

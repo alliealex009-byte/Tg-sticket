@@ -28,8 +28,12 @@ WELCOME = (
 
 @router.message(CommandStart())
 @router.message(Command("help", "menu"))
-async def cmd_start(message: Message, state: FSMContext) -> None:
+async def cmd_start(message: Message, state: FSMContext, ctx: AppContext) -> None:
     await state.clear()
+    if ctx.settings.quiet_mode:
+        await message.answer("💗 Send me any image (or many) and I'll turn each one into a sticker automatically.\n"
+                             "Extras: /find <i>cute cats</i> · /sticker <i>idea</i> · /text <i>hello</i>")
+        return
     await message.answer(WELCOME, reply_markup=kb.main_menu())
 
 
@@ -54,6 +58,8 @@ async def cb_noop(cb: CallbackQuery) -> None:
 
 @fallback_router.message(F.text & ~F.text.startswith("/"))
 async def plain_text(message: Message, ctx: AppContext) -> None:
+    if ctx.settings.quiet_mode:
+        return
     await message.answer(
         "💗 Tell me what to do with the menu below, or use /sticker <i>your idea</i> "
         "to make an AI sticker.", reply_markup=kb.main_menu())

@@ -106,6 +106,24 @@ async def run_search(target: Message, ctx: AppContext, user: dict, query: str) -
             await status.edit_text("😢 I couldn't find usable images for that. Try another keyword!",
                                    reply_markup=kb.search_categories())
             return
+        if ctx.settings.quiet_mode:   # no previews: turn the best results straight into stickers
+            made = 0
+            for r in results[:12]:
+                if made >= ctx.settings.quiet_find_count:
+                    break
+                try:
+                    data = await ctx.downloader.fetch_image(r.image_url)
+                except Exception:  # noqa: BLE001 - skip broken results
+                    continue
+                if await make_and_deliver(ctx, user, target, data, user_options(user), hints=(query, r.title),
+                                          source={"provider": r.provider, "url": r.page_url, "license": r.license}):
+                    made += 1
+            with suppress(TelegramBadRequest):
+                await status.delete()
+            if not made:
+                await refund(ctx, user, "search")
+                await target.answer("😢 I couldn't make stickers from that search. Send me your own images instead 💗")
+            return
         sid = await ctx.db.save_search(user["_id"], query, [r.to_dict() for r in results])
         with suppress(TelegramBadRequest):
             await status.delete()
