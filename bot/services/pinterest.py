@@ -31,8 +31,11 @@ def convert(items: list, limit: int) -> list:
     for it in items:
         image = (it.get("image") or "").strip()
         host = (urlsplit(image).hostname or "").lower()
-        if host not in PIN_CDN_HOSTS:
-            continue  # page URLs / other hosts are not direct Pinterest images
+        page_host = (urlsplit((it.get("url") or it.get("source") or "")).hostname or "").lower()
+        from_pin = host in PIN_CDN_HOSTS or (page_host.endswith("pinterest.com") and host
+                                             and not host.endswith("pinterest.com"))
+        if not from_pin:
+            continue  # Pinterest page URLs / results unrelated to Pinterest are not images we can use
         thumb = (it.get("thumbnail") or "").strip()
         page = (it.get("url") or it.get("source") or "").strip()
         out.append(SearchResult(
@@ -63,4 +66,6 @@ class PinterestProvider:
         except ImportError:
             log.warning("ddgs is not installed; Pinterest provider disabled")
             return []
-        return convert(items, limit)
+        out = convert(items, limit)
+        log.info("pinterest provider: %d raw results, %d usable", len(items), len(out))
+        return out

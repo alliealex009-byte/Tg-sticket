@@ -99,8 +99,9 @@ class Downloader:
             return self._resolver(host, port)
         return resolve_ips(host, port, allow_private=self.allow_private)
 
-    def _get_sync(self, url: str, max_bytes: int, accept: tuple, headers: dict | None) -> Fetched:
-        deadline = time.monotonic() + self.total_timeout
+    def _get_sync(self, url: str, max_bytes: int, accept: tuple, headers: dict | None,
+                  total_timeout: float | None = None) -> Fetched:
+        deadline = time.monotonic() + (total_timeout or self.total_timeout)
         current = url
         for _ in range(self.max_redirects + 1):
             try:
@@ -172,13 +173,14 @@ class Downloader:
 
     # ------------------------------------------------------------------ async API
     async def fetch(self, url: str, accept: tuple = ("image/",), max_bytes: int | None = None,
-                    headers: dict | None = None) -> Fetched:
+                    headers: dict | None = None, total_timeout: float | None = None) -> Fetched:
         limit = max_bytes or self.max_bytes
+        tt = total_timeout or self.total_timeout
         async with self._sem:
             try:
                 return await asyncio.wait_for(
-                    asyncio.to_thread(self._get_sync, url, limit, accept, headers),
-                    timeout=self.total_timeout + 5,
+                    asyncio.to_thread(self._get_sync, url, limit, accept, headers, tt),
+                    timeout=tt + 5,
                 )
             except asyncio.TimeoutError as exc:
                 raise DownloadError("Download timed out.") from exc

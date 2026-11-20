@@ -29,7 +29,7 @@ class OpenverseProvider:
 
     async def search(self, query: str, limit: int, page: int = 1) -> list:
         url = ("https://api.openverse.org/v1/images/?q=" + quote(query)
-               + f"&page_size={min(limit, 20)}&page={page}&license_type=commercial,modification&mature=false")
+               + f"&page_size={min(limit, 20)}&page={page}&mature=false")
         data = await self.dl.fetch_json(url)
         out = []
         for it in data.get("results", []):
@@ -136,7 +136,7 @@ class ImageSearchService:
                 self.api_calls += 1
                 collected.extend(await provider.search(query, limit))
             except Exception as exc:  # noqa: BLE001 - one broken provider must not kill search
-                log.warning("Search provider %s failed: %s", provider.name, exc.__class__.__name__)
+                log.warning("Search provider %s failed: %s: %s", provider.name, exc.__class__.__name__, str(exc)[:150])
                 continue
             collected = filter_results(collected, limit)
             if len(collected) >= limit:
