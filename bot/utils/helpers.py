@@ -171,7 +171,7 @@ async def retry_async(
 class RateLimiter:
     """Per-user token bucket (in memory)."""
 
-    def __init__(self, rate: float, burst: int = 6):
+    def __init__(self, rate: float, burst: int = 25):
         self.rate, self.burst = max(rate, 0.1), burst
         self._buckets: dict = {}
 
