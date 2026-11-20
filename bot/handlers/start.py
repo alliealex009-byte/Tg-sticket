@@ -37,6 +37,11 @@ async def cmd_start(message: Message, state: FSMContext, ctx: AppContext) -> Non
     await message.answer(WELCOME, reply_markup=kb.main_menu())
 
 
+@router.message(Command("id"))
+async def cmd_id(message: Message) -> None:
+    await message.answer(f"🆔 Your Telegram ID: <code>{message.from_user.id}</code>")
+
+
 @router.message(Command("cancel"))
 async def cmd_cancel(message: Message, state: FSMContext) -> None:
     await state.clear()

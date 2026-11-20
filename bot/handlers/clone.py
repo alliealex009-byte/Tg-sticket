@@ -28,9 +28,9 @@ def parse_pack_name(text: str) -> str | None:
 
 
 async def do_clone(message: Message, ctx: AppContext, source: str) -> None:
-    owner = ctx.settings.owner_id
+    owner = ctx.owner_id
     if not owner:
-        await message.answer("Set OWNER_ID (or ADMIN_IDS) in .env first.")
+        await message.answer("No owner set. Send /owner from your account (or set OWNER_ID in .env).")
         return
     status = await message.answer(f"📥 Cloning <code>{esc(source)}</code>…")
 
@@ -59,6 +59,8 @@ async def do_clone(message: Message, ctx: AppContext, source: str) -> None:
 @router.message(Command("clone"))
 async def cmd_clone(message: Message, command: CommandObject, ctx: AppContext) -> None:
     if not ctx.is_admin(message.from_user.id):
+        await message.answer(f"🔒 /clone is admin-only. Your ID is <code>{message.from_user.id}</code> — "
+                             "put it in ADMIN_IDS in .env and restart.")
         return
     source = parse_pack_name(command.args or "")
     if not source:

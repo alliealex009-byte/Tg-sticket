@@ -96,14 +96,17 @@ async def deliver_sticker(ctx: AppContext, user: dict, message: Message, webp: b
     uid = user["_id"]
     doc = await ctx.stickers.save_draft(uid, webp, category, emojis, source, has_alpha)
     pack_url, auto_note = "", ""
-    if ctx.settings.auto_pack and ctx.settings.owner_id:
+    if ctx.settings.auto_pack and ctx.owner_id:
         try:
-            res = await ctx.stickers.auto_publish(message.bot, doc, ctx.settings.owner_id, ctx.settings.channel_id)
+            res = await ctx.stickers.auto_publish(message.bot, doc, ctx.owner_id, ctx.settings.channel_id)
             pack_url = res.pack.link
             auto_note = (f"📦 {'Already in' if res.duplicate else 'Added to'} <b>{esc(res.pack.title)}</b>"
                          + (" ✨ (new pack!)" if res.created else ""))
-        except Exception:  # noqa: BLE001 - the sticker itself must still be delivered
+        except Exception as exc:  # noqa: BLE001 - the sticker itself must still be delivered
             log.exception("Automatic pack publishing failed (has the owner pressed Start in the bot?)")
+            if ctx.is_admin(uid):
+                await message.answer(f"⚠️ Couldn't add to the owner pack: <code>{esc(str(exc)[:200])}</code>\n"
+                                     f"Owner ID in use: <code>{ctx.owner_id}</code>. Fix: send /owner from your own account.")
     quiet = ctx.settings.quiet_mode and bool(pack_url)
     await message.answer_sticker(
         BufferedInputFile(webp, filename="sticker.webp"),
@@ -117,9 +120,19 @@ async def deliver_sticker(ctx: AppContext, user: dict, message: Message, webp: b
 
 
 async def queue_message(ctx: AppContext, user: dict, message: Message, sticker_id: str) -> str:
-    if ctx.settings.auto_pack and ctx.settings.owner_id:
-        await message.answer("📦 Stickers are added to the public packs automatically — nothing more to do 💗")
-        return "queued"
+    if ctx.settings.auto_pack and ctx.owner_id:
+        doc = await ctx.db.get_sticker(sticker_id)
+        if doc and doc.get("status") == "published":
+            await message.answer("📦 Already in the public pack 💗")
+            return "queued"
+        try:
+            res = await ctx.stickers.auto_publish(message.bot, doc, ctx.owner_id, ctx.settings.channel_id)
+            await message.answer(f"📦 Added to <b>{esc(res.pack.title)}</b>", reply_markup=kb.pack_only(res.pack.link))
+            return "queued"
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Auto pack add failed: %s", exc)
+            await message.answer("⚠️ I couldn't add it to the pack right now.")
+            return "missing"
     res = await ctx.stickers.queue(user["_id"], sticker_id)
     cap = ctx.settings.max_pack_stickers
     texts = {
