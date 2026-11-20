@@ -19,7 +19,7 @@ from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboar
 from ..config import Settings
 from ..database import Database
 from ..utils.helpers import sha256_hex, short_id
-from .category_detector import category_emoji, pack_title
+from .category_detector import category_emoji, clone_title, pack_title
 
 log = logging.getLogger(__name__)
 PACK_NAME_RE = re.compile(r"^[a-z](?:[a-z0-9]|_(?!_))*$")
@@ -84,6 +84,13 @@ class AutoResult:
     pack: PublishedPack
     created: bool = False
     duplicate: bool = False
+
+
+@dataclass
+class CloneResult:
+    packs: list = field(default_factory=list)
+    count: int = 0
+    already: bool = False
 
 
 @dataclass
@@ -336,3 +343,64 @@ class StickerManager:
             else:
                 bad += 1
         return ok, bad
+
+    # ------------------------------------------------------------------ clone packs
+    async def clone_set(self, bot, source_name: str, owner: int, channel_id: str = "", progress=None) -> CloneResult:
+        """Copy someone else's sticker pack into packs owned by ``owner``.
+
+        Title = '<original title> : @credit'. Stickers are copied by Telegram file_id (no re-upload) in the same
+        format (static/animated/video). Sets bigger than the pack cap are split into similarly named packs.
+        """
+        existing = await self.db.cloned_packs(source_name)
+        if existing:
+            return CloneResult([PublishedPack(p["name"], p["title"], p["link"], p["count"]) for p in existing],
+                               sum(p["count"] for p in existing), already=True)
+        sset = await tg_call(lambda: bot.get_sticker_set(name=source_name))
+        if str(getattr(sset, "sticker_type", "regular")) == "mask":
+            raise ValueError("Mask packs can't be cloned.")
+        stype = str(getattr(sset, "sticker_type", "regular"))
+        cap = self.settings.max_pack_stickers
+        stickers = list(sset.stickers)
+        result, done = CloneResult(), 0
+
+        def make_input(s) -> InputSticker:
+            fmt = "animated" if s.is_animated else "video" if s.is_video else "static"
+            return InputSticker(sticker=s.file_id, format=fmt, emoji_list=[s.emoji or "✨"])
+
+        async with self._lock:
+            for part, start in enumerate(range(0, len(stickers), cap), start=1):
+                chunk = stickers[start:start + cap]
+                title = clone_title(sset.title, self.settings.pack_credit, part)
+                for _ in range(MAX_NEW_SET_ATTEMPTS):
+                    name = make_pack_name(sset.title or source_name, owner, self.bot_username)
+                    try:
+                        await tg_call(lambda n=name, c=chunk, t=title: bot.create_new_sticker_set(
+                            user_id=owner, name=n, title=t, stickers=[make_input(c[0])], sticker_type=stype))
+                        break
+                    except TelegramBadRequest as exc:
+                        if "occupied" not in str(exc).lower() and "already" not in str(exc).lower():
+                            raise
+                else:
+                    raise RuntimeError("Could not find a free pack name.")
+                for s in chunk[1:]:
+                    await tg_call(lambda n=name, st=s: bot.add_sticker_to_set(user_id=owner, name=n, sticker=make_input(st)))
+                    done += 1
+                    if progress and done % 10 == 0:
+                        await progress(done, len(stickers))
+                done += 1
+                pack = await self.db.create_pack_doc({
+                    "name": name, "title": title, "owner_id": owner, "category": "clone", "kind": "clone",
+                    "source": source_name, "part": part, "count": len(chunk), "full": True,
+                    "link": pack_link(name), "channel_posted": False})
+                result.packs.append(PublishedPack(name, title, pack["link"], len(chunk)))
+                if channel_id:
+                    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(
+                        text=f"➕ Add {title}"[:60], url=pack["link"])]])
+                    chat = int(channel_id) if channel_id.lstrip("-").isdigit() else channel_id
+                    try:
+                        await tg_call(lambda c=chunk, ch=chat, mk=markup: bot.send_sticker(chat_id=ch, sticker=c[0].file_id, reply_markup=mk))
+                        await self.db.update_pack(name, {"channel_posted": True})
+                    except TelegramAPIError as exc:
+                        log.warning("Channel post for clone failed: %s", exc)
+        result.count = len(stickers)
+        return result

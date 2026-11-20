@@ -78,6 +78,16 @@ def detect_category(*hints: str) -> str | None:
 PART_WORDS = ["Vibes", "Treats", "Club", "Mood", "Magic", "Dreams", "Party", "Cuties", "Love", "Joy"]
 
 
+def clone_title(original: str, credit: str, part: int = 1) -> str:
+    """Title for a cloned pack: '<original title> : @credit' (similar-but-different name for extra parts)."""
+    base = (original or "Stickers").strip()
+    if part > 1:
+        idx = part - 2
+        base += " " + PART_WORDS[idx % len(PART_WORDS)] + (f" {idx // len(PART_WORDS) + 1}" if idx >= len(PART_WORDS) else "")
+    suffix = f" : {credit.strip()}"
+    return (base[: max(1, 64 - len(suffix))] + suffix)[:64]
+
+
 def pack_title(key: str, credit: str, part: int = 1) -> str:
     """Pack title format required by the project: 'Food : @Advik_prakashh'."""
     label = category_label(key)

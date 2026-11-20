@@ -44,7 +44,7 @@ class BuildResult:
 
 
 class Remover(Protocol):
-    async def remove(self, img: Image.Image) -> Image.Image: ...
+    async def remove(self, img: Image.Image, model: str | None = None) -> Image.Image: ...
 
 
 # --------------------------------------------------------------------- loading
@@ -325,6 +325,22 @@ def make_contact_sheet(webps: list, cols: int = 4, cell: int = 160, limit: int =
     return buf.getvalue()
 
 
+def looks_like_illustration(img: Image.Image) -> bool:
+    """Cartoon/flat-colour artwork vs photograph (share of flat horizontal neighbour pairs)."""
+    import numpy as np
+
+    small = img.convert("RGB")
+    small.thumbnail((256, 256))
+    arr = np.asarray(small).astype(int)
+    if arr.shape[1] < 2:
+        return False
+    flat = (np.abs(np.diff(arr, axis=1)).sum(axis=2) < 8).mean()
+    return bool(flat > 0.4)
+
+
+ILLUSTRATION_MODEL = "isnet-anime"
+
+
 # --------------------------------------------------------------------- pipeline
 def needs_background_removal(img: Image.Image, mode: str) -> bool:
     if mode == "keep":
@@ -380,7 +396,8 @@ class StickerBuilder:
                 notes.append("bg_unavailable")
             else:
                 try:
-                    img = await self.remover.remove(img)
+                    model = ILLUSTRATION_MODEL if await asyncio.to_thread(looks_like_illustration, img) else None
+                    img = await self.remover.remove(img, model)
                     removed = True
                 except BackgroundRemovalUnavailable:
                     notes.append("bg_unavailable")
