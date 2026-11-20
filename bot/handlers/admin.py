@@ -216,6 +216,14 @@ async def cmd_maintenance(message: Message, command: CommandObject, ctx: AppCont
     await message.answer(f"🔧 Maintenance mode {'enabled — only admins can use the bot' if arg == 'on' else 'disabled'}.")
 
 
+@router.message(Command("owner"))
+async def cmd_owner(message: Message, ctx: AppContext) -> None:
+    ctx.runtime["owner_id"] = message.from_user.id
+    await ctx.db.set_setting("owner_id", message.from_user.id)
+    await message.answer(f"👑 Pack owner is now your account (<code>{message.from_user.id}</code>). "
+                         "All new stickers and clones go to packs owned by you.")
+
+
 @router.message(Command("postpacks"))
 async def cmd_postpacks(message: Message, ctx: AppContext) -> None:
     if not ctx.settings.channel_id:

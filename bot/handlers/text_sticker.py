@@ -135,7 +135,7 @@ async def cb_go(cb: CallbackQuery, ctx: AppContext, user: dict, state: FSMContex
         emojis = split_emoji(d["text"])[1] or None
         await deliver_sticker(ctx, user, msg, result.webp, category, {"type": "text", "text": d["text"]},
                               result.has_alpha, emojis)
-        if result.has_alpha:
+        if result.has_alpha and not ctx.settings.quiet_mode:
             await msg.answer("✨ Transparent background ✅ — change colours above and tap Create again to remix.")
     except Exception as exc:  # noqa: BLE001
         await refund(ctx, user, "sticker")
